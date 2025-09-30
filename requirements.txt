@@ -1,2 +1,27 @@
-ipykernel
+# Dashboard
+streamlit
+
+# Data Handling
+pandas
+numpy
+
+# Visualization
+matplotlib
+seaborn
+plotly
+
+# NLP
+textblob
+nltk
+spacy
+scikit-learn
+
+# APIs
+praw
+
+# Config
 python-dotenv
+
+# Notebooks / Dev
+jupyter
+ipykernel
