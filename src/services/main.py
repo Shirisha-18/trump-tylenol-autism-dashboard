@@ -21,6 +21,9 @@ def main():
         ].head(10)
     )
 
+    # Save to CSV for later preprocessing
+    #df.to_csv("data/raw_reddit_posts.csv", index=False)
+    #print("Saved raw Reddit posts to data/raw_reddit_posts.csv")
 
 
 if __name__ == "__main__":
