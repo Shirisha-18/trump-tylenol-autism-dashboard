@@ -92,6 +92,6 @@ df['stance'] = np.nan  # optional stance labeling for misinformation analysis
 # 8. Save munged dataset
 # -------------------------------
 df.to_csv(WRANGLED_FILE, index=False)
-print(f"Munged dataset saved: {WRANGLED_FILE}")
+print(f"Wrangled dataset saved: {WRANGLED_FILE}")
 print(f"Final shape: {df.shape[0]} rows, {df.shape[1]} columns")
 print(df.head())
