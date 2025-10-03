@@ -1,84 +1,104 @@
+import aiohttp
+import asyncio
 import pandas as pd
-import requests
 from src.services.config import get_reddit_token
-import time
+
+BATCH_SIZE = 100  # Reddit API max per request
 
 
-def fetch_posts(query, limit=100, subreddit="all"):
-    """
-    Search Reddit for posts with a query and return as DataFrame.
-    Handles batch requests if limit > 100 (Reddit API returns max 100 per request).
-    """
+async def fetch(session, url, headers, params=None):
+    async with session.get(url, headers=headers, params=params) as response:
+        response.raise_for_status()
+        return await response.json()
+
+
+async def fetch_posts_batch(query, limit=100, subreddit="all"):
+    """Fetch Reddit posts asynchronously in batches of 100."""
     headers = get_reddit_token()
     url = f"https://oauth.reddit.com/r/{subreddit}/search"
     all_posts = []
     after = None
-    batch_size = min(limit, 100)
     fetched = 0
 
-    while fetched < limit:
-        params = {
-            "q": query,
-            "limit": batch_size,
-            "restrict_sr": False,
-            "sort": "relevance",
-            "after": after,
-        }
+    async with aiohttp.ClientSession() as session:
+        while fetched < limit:
+            batch_size = min(BATCH_SIZE, limit - fetched)
+            params = {
+                "q": query,
+                "limit": batch_size,
+                "restrict_sr": "false",
+                "sort": "relevance",
+            }
+            if after:
+                params["after"] = after
 
-        res = requests.get(url, headers=headers, params=params)
-        res.raise_for_status()
-        posts = res.json().get("data", {}).get("children", [])
+            data = await fetch(session, url, headers, params)
+            posts = data.get("data", {}).get("children", [])
+            if not posts:
+                break
 
-        if not posts:
-            break
+            for post in posts:
+                d = post.get("data", {})
+                all_posts.append(
+                    {
+                        "post_id": d.get("id"),
+                        "subreddit": d.get("subreddit"),
+                        "author": d.get("author"),
+                        "title": d.get("title"),
+                        "selftext": d.get("selftext"),
+                        "url": d.get("url"),
+                        "ups": d.get("ups"),
+                        "downs": d.get("downs"),
+                        "score": d.get("score"),
+                        "num_comments": d.get("num_comments"),
+                        "created_utc": d.get("created_utc"),
+                        "permalink": d.get("permalink"),
+                        "domain": d.get("domain"),
+                    }
+                )
 
-        for post in posts:
-            data = post.get("data", {})
-            all_posts.append(
-                {
-                    "post_id": data.get("id"),
-                    "subreddit": data.get("subreddit"),
-                    "title": data.get("title"),
-                    "selftext": data.get("selftext"),
-                    "url": data.get("url"),
-                    "ups": data.get("ups"),
-                    "downs": data.get("downs"),
-                    "score": data.get("score"),
-                    "created_utc": data.get("created_utc"),
-                }
-            )
-
-        fetched += len(posts)
-        after = posts[-1]["data"]["name"]  # for pagination
-        time.sleep(1)  # avoid rate limiting
+            fetched += len(posts)
+            after = posts[-1]["data"]["name"] if posts else None
+            await asyncio.sleep(1)  # avoid rate limiting
 
     return pd.DataFrame(all_posts)
 
 
-def fetch_comments(post_id):
-    """
-    Fetch comments for a given post ID.
-    """
-    headers = get_reddit_token()
+async def fetch_comments_for_post(session, headers, post_id):
+    """Fetch comments for a single post asynchronously."""
     url = f"https://oauth.reddit.com/comments/{post_id}"
-    res = requests.get(url, headers=headers, params={"limit": 500})
-    res.raise_for_status()
-    comments_data = res.json()
-
+    data = await fetch(session, url, headers, params={"limit": 500})
     all_comments = []
-    if len(comments_data) > 1:
-        comments_list = comments_data[1].get("data", {}).get("children", [])
+
+    if len(data) > 1:
+        comments_list = data[1].get("data", {}).get("children", [])
         for comment in comments_list:
-            data = comment.get("data", {})
+            d = comment.get("data", {})
             all_comments.append(
                 {
                     "post_id": post_id,
-                    "comment_id": data.get("id"),
-                    "body": data.get("body"),
-                    "ups": data.get("ups"),
-                    "downs": data.get("downs"),
-                    "score": data.get("score"),
+                    "comment_id": d.get("id"),
+                    "author": d.get("author"),
+                    "body": d.get("body"),
+                    "ups": d.get("ups"),
+                    "downs": d.get("downs"),
+                    "score": d.get("score"),
+                    "created_utc": d.get("created_utc"),
+                    "permalink": d.get("permalink"),
                 }
             )
+    return all_comments
 
+
+async def fetch_all_comments(posts_df):
+    """Fetch comments for all posts asynchronously."""
+    headers = get_reddit_token()
+    async with aiohttp.ClientSession() as session:
+        tasks = [
+            fetch_comments_for_post(session, headers, post_id)
+            for post_id in posts_df["post_id"]
+        ]
+        results = await asyncio.gather(*tasks)
+    # Flatten list of lists
+    all_comments = [item for sublist in results for item in sublist]
     return pd.DataFrame(all_comments)
