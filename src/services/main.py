@@ -1,9 +1,26 @@
-from services.data_extract import search_reddit
+# main.py
+from src.services.data_extract import search_reddit
 
 
 def main():
-    df = search_reddit("Asia Cup 2025", limit=25)
-    print(df[["subreddit", "title", "score", "url"]])
+    # Example query
+    df = search_reddit("Trump tylenol autism", limit=50, subreddit="all")
+
+    # Print top columns
+    print(
+        df[
+            [
+                "subreddit",
+                "author",
+                "title",
+                "score",
+                "num_comments",
+                "url",
+                "created",
+            ]
+        ].head(10)
+    )
+
 
 
 if __name__ == "__main__":
