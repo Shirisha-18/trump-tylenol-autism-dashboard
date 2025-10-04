@@ -9,19 +9,22 @@ numpy
 matplotlib
 seaborn
 plotly
+plotly-express
 
 # NLP
 textblob
 nltk
 spacy
 scikit-learn
+regex
 
 # APIs
 praw
-
-# Config
+aiohttp
 python-dotenv
 
 # Notebooks / Dev
 jupyter
 ipykernel
+scipy
+pillow

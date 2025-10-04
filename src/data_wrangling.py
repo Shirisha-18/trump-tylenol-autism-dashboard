@@ -27,25 +27,33 @@ df['hour'] = df['created'].dt.hour
 # -------------------------------
 # 2. Text Features
 # -------------------------------
-df['word_count'] = df['text'].str.split().apply(len)
-df['char_count'] = df['text'].str.len()
-df['avg_word_len'] = df['char_count'] / df['word_count'].replace(0, 1)
-df['has_url'] = df['text'].str.contains(r'http', regex=True).astype(int)
+# Ensure text column is string
+df["text"] = df["text"].fillna("").astype(str)
+
+df["word_count"] = df["text"].str.split().apply(len)
+df["char_count"] = df["text"].str.len()
+df["avg_word_len"] = df["char_count"] / df["word_count"].replace(0, 1)
+df["has_url"] = df["text"].str.contains(r"http", regex=True).astype(int)
+
 
 # -------------------------------
 # 3. Engagement Features
 # -------------------------------
-df['engagement'] = df['ups'] + df['downs'] + df['score']
+df["engagement"] = df["ups"] + df["downs"] + df["score"]
 
 # Comments per post
-comments_per_post = (
-    df[df['source'] == 'comment']
-    .groupby('post_id')
-    .size()
-    .rename('num_comments')
-)
-df = df.merge(comments_per_post, on='post_id', how='left')
-df['num_comments'] = df['num_comments'].fillna(0).astype(int)
+if "source" in df.columns and (df["source"] == "comment").any():
+    comments_per_post = (
+        df[df["source"] == "comment"].groupby("post_id").size().rename("num_comments")
+    )
+    df = df.merge(comments_per_post, on="post_id", how="left")
+
+# Ensure 'num_comments' exists
+if "num_comments" not in df.columns:
+    df["num_comments"] = 0
+else:
+    df["num_comments"] = df["num_comments"].fillna(0).astype(int)
+
 
 # -------------------------------
 # 4. Author / Subreddit Stats

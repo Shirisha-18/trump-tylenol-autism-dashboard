@@ -1,7 +1,7 @@
 import asyncio
 import os
 import pandas as pd
-from src.data_extract import fetch_posts_batch, fetch_all_comments
+from src.extract import fetch_posts_batch, fetch_all_comments
 from src.preprocess import preprocess_posts, preprocess_comments, merge_posts_comments
 
 RAW_DIR = "data/raw"
